@@ -3,7 +3,7 @@
 */
 
 import { Router } from 'express';
-import { createNotification, getMyNotifications, testing } from '../controllers/notify';
+import { createNotification, getMyNotifications, markAsViewed } from '../controllers/notify';
 import { check, body } from 'express-validator';
 import { validarCampos } from '../middlewares/validar-campos';
 import { addInfoUsuario } from '../middlewares/add-info-usuario';
@@ -30,5 +30,7 @@ router.post(
 );
 
 router.get( '/getMyNotifications', validarJWT ,getMyNotifications );
+
+router.put( '/markAsViewed', markAsViewed );
 
 export default router; 

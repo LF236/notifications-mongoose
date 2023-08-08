@@ -23,4 +23,5 @@ router.post('/add', [
     add_info_usuario_1.addInfoUsuario
 ], notify_1.createNotification);
 router.get('/getMyNotifications', validar_jwt_1.validarJWT, notify_1.getMyNotifications);
+router.put('/markAsViewed', notify_1.markAsViewed);
 exports.default = router;

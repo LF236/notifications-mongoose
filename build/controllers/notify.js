@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMyNotifications = exports.createNotification = void 0;
+exports.markAsViewed = exports.getMyNotifications = exports.createNotification = void 0;
 const UserInfo_1 = __importDefault(require("../models/UserInfo"));
 const createNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -31,8 +31,8 @@ const createNotification = (req, res) => __awaiter(void 0, void 0, void 0, funct
                     isView: 0,
                     isView_date: new Date(),
                     create_at: new Date(),
-                    info_sender: req.info_seender_user ? JSON.stringify(Object.assign(Object.assign({}, req.info_seender_user), { id_seender })) : ''
-                }
+                    info_sender: req.info_seender_user ? JSON.stringify(Object.assign(Object.assign({}, req.info_seender_user), { id_seender })) : '',
+                },
             }
         };
         let aux = yield UserInfo_1.default.findOneAndUpdate({ id_addressee }, create, {
@@ -64,24 +64,19 @@ const getMyNotifications = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 msg: 'Request Invalid'
             });
         }
-        // let skip = parseInt( page ) + 1;
-        // skip = ( 10 * skip ) - 10;
-        const aux = yield UserInfo_1.default.find({
-            id_addressee: id_usuario,
-        }, {
-            notifications: {
-                $equal: {
-                    isView: true
-                },
-                $slice: [
-                    0, 1
-                ]
-            }
-        });
-        console.log(aux);
+        let skip = parseInt(page) + 1;
+        skip = (10 * skip) - 10;
+        const aux = yield UserInfo_1.default.aggregate([
+            { $unwind: "$notifications" },
+            { $sort: { "notifications.create_at": -1 } },
+            { $match: { "notifications.isView": false } },
+            { $skip: skip },
+            { $limit: 10 },
+            { "$group": { "_id": "$_id", "notifications": { "$push": "$notifications" } } },
+        ]);
         res.status(201).json({
             ok: true,
-            aux
+            notifications: aux ? aux[0].notifications : []
         });
     }
     catch (err) {
@@ -93,3 +88,63 @@ const getMyNotifications = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.getMyNotifications = getMyNotifications;
+const markAsViewed = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userInfoTransaction = yield UserInfo_1.default.startSession();
+    userInfoTransaction.startTransaction();
+    try {
+        const { ids_to_view, id_user } = req.body;
+        if (!ids_to_view || ids_to_view.length < 1) {
+            return res.status(401).json({
+                ok: false,
+                msg: 'Request Invalid'
+            });
+        }
+        if (!id_user) {
+            return res.status(401).json({
+                ok: false,
+                msg: 'Request Invalid'
+            });
+        }
+        // VALIDAR QUE EL ID DEL USUARIO ESTE REGISTRADO EN LA DB DE NOTIFICACIONES
+        const userInfo = yield UserInfo_1.default.findOne({ id_addressee: id_user });
+        if (!userInfo) {
+            return res.status(401).json({
+                ok: false,
+                msg: 'No user notifications exists'
+            });
+        }
+        // 64cbd700f79d968336ae4262
+        let promisesOfUpdateNotifications = [];
+        // BARRER EL ARREGLO DE ID'S A CAMBIAR
+        ids_to_view.map((id) => {
+            promisesOfUpdateNotifications.push(UserInfo_1.default.findOneAndUpdate({ id_addressee: id_user, "notifications._id": `${id}` }, { "notifications.$.isView": true, "notifications.$.isView_date": new Date() }));
+        });
+        Promise.all(promisesOfUpdateNotifications)
+            .then(resPromise => {
+            res.json({
+                ok: true,
+                msg: 'Notifications updated successfully'
+            });
+        })
+            .catch(err => {
+            console.log(err);
+            res.status(500).json({
+                ok: false,
+                msg: 'Error, contacta al Devops'
+            });
+        });
+        // await UserInfo.findOneAndUpdate( { id_addressee: id_user, "notifications._id": '64cbd700f79d968336ae4262' }, { "notifications.$.msg": 'Vamos a las bandidas' } );            
+        yield userInfoTransaction.commitTransaction();
+        userInfoTransaction.endSession();
+    }
+    catch (err) {
+        console.log(err);
+        yield userInfoTransaction.abortTransaction();
+        userInfoTransaction.endSession();
+        res.status(500).json({
+            ok: false,
+            msg: 'Error, contacta al Devops'
+        });
+    }
+});
+exports.markAsViewed = markAsViewed;

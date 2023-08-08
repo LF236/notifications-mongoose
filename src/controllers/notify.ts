@@ -8,7 +8,7 @@ export const createNotification = async ( req: any, res: Response ) => {
         let create: any = {
             $set: {
                 id_addressee: id_addressee,
-                
+
             },
             $push: {
                 notifications: {
@@ -22,8 +22,9 @@ export const createNotification = async ( req: any, res: Response ) => {
                     create_at: new Date(),
                     info_sender: req.info_seender_user ? JSON.stringify( {
                         ...req.info_seender_user, id_seender
-                    } ) : ''
-                }
+                    } ) : '',
+
+                },
             }
         }
 
@@ -37,7 +38,7 @@ export const createNotification = async ( req: any, res: Response ) => {
             msg: 'Notification Success'
         });
 
-        
+
     } catch( err ) {
         console.log( err );
         res.status( 500 ).json({
@@ -57,33 +58,100 @@ export const getMyNotifications = async ( req: any, res: Response ) => {
                 msg: 'Request Invalid'
             });
         }
-        // let skip = parseInt( page ) + 1;
-        // skip = ( 10 * skip ) - 10;
+        let skip = parseInt( page ) + 1;
+        skip = ( 10 * skip ) - 10;
 
-        const aux = await UserInfo.find( {
-           id_addressee: id_usuario,
-           
-        }, {
-            notifications: {
-                $equal: {
-                    isView: true
-                },
-                $slice: [
-                    0,1
-                ]
-               }
-        } )
-        console.log( aux );
+
+        const aux = await UserInfo.aggregate( [
+            {$unwind : "$notifications"},
+            {$sort : {"notifications.create_at":-1}},
+            {$match: {"notifications.isView":false}},
+            {$skip: skip},
+            {$limit: 10},
+            {"$group": {"_id": "$_id", "notifications": {"$push": "$notifications"}}},
+        ] )
+
+
         res.status( 201 ).json({
             ok: true,
-            aux
+            notifications: aux ? aux[ 0 ].notifications : []
             
+
         });
     } catch( err ) {
         console.log( err );
         res.status( 500 ).json({
             ok: false,
             msg: 'Error interno, contacte con el Devops'
+        });
+    }
+}
+
+export const markAsViewed = async( req: any, res: Response ) => {
+    const userInfoTransaction = await UserInfo.startSession();
+    userInfoTransaction.startTransaction();
+    try {
+        const { ids_to_view, id_user } = req.body;
+        if( !ids_to_view || ids_to_view.length < 1 ) {
+            return res.status( 401 ).json({
+                ok: false,
+                msg: 'Request Invalid'
+            });
+        }
+    
+        if( !id_user ) {
+            return res.status( 401 ).json({
+                ok: false,
+                msg: 'Request Invalid'
+            });
+        }
+    
+        // VALIDAR QUE EL ID DEL USUARIO ESTE REGISTRADO EN LA DB DE NOTIFICACIONES
+        const userInfo = await UserInfo.findOne( { id_addressee: id_user } );
+        if( !userInfo ) {
+            return res.status( 401 ).json({
+                ok: false,
+                msg: 'No user notifications exists'
+            });
+        }
+        
+        // 64cbd700f79d968336ae4262
+        let promisesOfUpdateNotifications: any = [];
+        
+        // BARRER EL ARREGLO DE ID'S A CAMBIAR
+        ids_to_view.map( ( id: string ) => {
+            promisesOfUpdateNotifications.push(
+                UserInfo.findOneAndUpdate( { id_addressee: id_user, "notifications._id": `${ id }` }, { "notifications.$.isView": true, "notifications.$.isView_date": new Date() } )
+            )
+        } );
+
+        Promise.all( promisesOfUpdateNotifications )
+        .then( resPromise => {
+            res.json({
+                ok: true,
+                msg: 'Notifications updated successfully'
+            });
+        } )
+        .catch( err => {
+            console.log( err );
+            res.status( 500 ).json({
+                ok: false,
+                msg: 'Error, contacta al Devops'
+            });
+        } )
+
+        // await UserInfo.findOneAndUpdate( { id_addressee: id_user, "notifications._id": '64cbd700f79d968336ae4262' }, { "notifications.$.msg": 'Vamos a las bandidas' } );            
+
+        await userInfoTransaction.commitTransaction();
+        userInfoTransaction.endSession();
+    }
+    catch( err ) {     
+        console.log( err );
+        await userInfoTransaction.abortTransaction();
+        userInfoTransaction.endSession();
+        res.status( 500 ).json({
+            ok: false,
+            msg: 'Error, contacta al Devops'
         });
     }
 }
