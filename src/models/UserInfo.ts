@@ -26,7 +26,11 @@ const NotificationSchema = new Schema({
     complement_action: {
         type: String,
         require: false
-    },        
+    },
+    msg_to_action: {
+        type: String,
+        require: false
+    },
     isView: {
         type: Boolean,
         require: true,

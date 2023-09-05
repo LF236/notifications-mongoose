@@ -15,6 +15,8 @@ export const validarJWT = ( req: any, res: Response, next: NextFunction ) => {
             token,
             `${ process.env.SECRET_JWT_SEED }`
         );
+
+        console.log( id_usuario );
         req.id_usuario = id_usuario;
         next();
     } catch( err ) {

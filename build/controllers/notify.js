@@ -16,7 +16,7 @@ exports.markAsViewed = exports.getMyNotifications = exports.createNotification =
 const UserInfo_1 = __importDefault(require("../models/UserInfo"));
 const createNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { msg, id_addressee, is_case_especial_case, action, complement_action, name_module, id_seender } = req.body;
+        const { msg, id_addressee, is_case_especial_case, action, complement_action, name_module, id_seender, msg_to_action } = req.body;
         let create = {
             $set: {
                 id_addressee: id_addressee,
@@ -31,6 +31,7 @@ const createNotification = (req, res) => __awaiter(void 0, void 0, void 0, funct
                     isView: 0,
                     isView_date: new Date(),
                     create_at: new Date(),
+                    msg_to_action,
                     info_sender: req.info_seender_user ? JSON.stringify(Object.assign(Object.assign({}, req.info_seender_user), { id_seender })) : '',
                 },
             }

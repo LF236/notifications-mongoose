@@ -15,6 +15,7 @@ const validarJWT = (req, res, next) => {
     }
     try {
         const { id_usuario } = jsonwebtoken_1.default.verify(token, `${process.env.SECRET_JWT_SEED}`);
+        console.log(id_usuario);
         req.id_usuario = id_usuario;
         next();
     }

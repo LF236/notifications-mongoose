@@ -6,4 +6,5 @@ export interface AddNotifyePostRequestInterface {
     complement_action: string;
     id_seender?: number;
     name_module: string;
+    msg_to_action?: string;
 }

@@ -4,7 +4,7 @@ import UserInfo from '../models/UserInfo';
 
 export const createNotification = async ( req: any, res: Response ) => {
     try{
-        const { msg, id_addressee, is_case_especial_case, action, complement_action, name_module, id_seender } : AddNotifyePostRequestInterface = req.body;
+        const { msg, id_addressee, is_case_especial_case, action, complement_action, name_module, id_seender, msg_to_action } : AddNotifyePostRequestInterface = req.body;
         let create: any = {
             $set: {
                 id_addressee: id_addressee,
@@ -20,6 +20,7 @@ export const createNotification = async ( req: any, res: Response ) => {
                     isView: 0,
                     isView_date: new Date(),
                     create_at: new Date(),
+                    msg_to_action,
                     info_sender: req.info_seender_user ? JSON.stringify( {
                         ...req.info_seender_user, id_seender
                     } ) : '',

@@ -31,6 +31,10 @@ const NotificationSchema = new mongoose_1.Schema({
         type: String,
         require: false
     },
+    msg_to_action: {
+        type: String,
+        require: false
+    },
     isView: {
         type: Boolean,
         require: true,
