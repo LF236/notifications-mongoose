@@ -66,7 +66,12 @@ export const getMyNotifications = async ( req: any, res: Response ) => {
         const aux = await UserInfo.aggregate( [
             {$unwind : "$notifications"},
             {$sort : {"notifications.create_at":-1}},
-            {$match: {"notifications.isView":false}},
+            {
+                $match: {
+                    "notifications.isView":false,
+                    "id_addressee": id_usuario
+                }
+            },
             {$skip: skip},
             {$limit: 10},
             {"$group": {"_id": "$_id", "notifications": {"$push": "$notifications"}}},
@@ -92,7 +97,9 @@ export const markAsViewed = async( req: any, res: Response ) => {
     const userInfoTransaction = await UserInfo.startSession();
     userInfoTransaction.startTransaction();
     try {
-        const { ids_to_view, id_user } = req.body;
+        const { ids_to_view } = req.body;
+        const id_user = req.id_usuario;
+        console.log( id_user );
         if( !ids_to_view || ids_to_view.length < 1 ) {
             return res.status( 401 ).json({
                 ok: false,
@@ -150,6 +157,45 @@ export const markAsViewed = async( req: any, res: Response ) => {
         console.log( err );
         await userInfoTransaction.abortTransaction();
         userInfoTransaction.endSession();
+        res.status( 500 ).json({
+            ok: false,
+            msg: 'Error, contacta al Devops'
+        });
+    }
+}
+
+export const countNotifications = async( req: any, res: Response ) => {
+    try {
+        const id_usuario = req.id_usuario;
+        const total = await UserInfo.aggregate( [
+            {
+                $match: {
+                    "id_addressee": id_usuario
+                }
+            },
+
+            { $unwind : "$notifications" },
+
+            {
+                $match: { "notifications.isView": false }
+            },
+
+            {
+                "$group": {
+                  "_id": "$id",
+                  "total": {"$sum": 1}
+                }
+            }
+        ] );
+
+        res.status( 200 ).json({
+            ok: true,
+            msg: 'Query ok',
+            total: total.length > 0 ? total[ 0 ].total : 0
+        });
+    }
+    catch( err ) {
+        console.log( err );
         res.status( 500 ).json({
             ok: false,
             msg: 'Error, contacta al Devops'

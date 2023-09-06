@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markAsViewed = exports.getMyNotifications = exports.createNotification = void 0;
+exports.countNotifications = exports.markAsViewed = exports.getMyNotifications = exports.createNotification = void 0;
 const UserInfo_1 = __importDefault(require("../models/UserInfo"));
 const createNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -70,7 +70,12 @@ const getMyNotifications = (req, res) => __awaiter(void 0, void 0, void 0, funct
         const aux = yield UserInfo_1.default.aggregate([
             { $unwind: "$notifications" },
             { $sort: { "notifications.create_at": -1 } },
-            { $match: { "notifications.isView": false } },
+            {
+                $match: {
+                    "notifications.isView": false,
+                    "id_addressee": id_usuario
+                }
+            },
             { $skip: skip },
             { $limit: 10 },
             { "$group": { "_id": "$_id", "notifications": { "$push": "$notifications" } } },
@@ -93,7 +98,9 @@ const markAsViewed = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     const userInfoTransaction = yield UserInfo_1.default.startSession();
     userInfoTransaction.startTransaction();
     try {
-        const { ids_to_view, id_user } = req.body;
+        const { ids_to_view } = req.body;
+        const id_user = req.id_usuario;
+        console.log(id_user);
         if (!ids_to_view || ids_to_view.length < 1) {
             return res.status(401).json({
                 ok: false,
@@ -149,3 +156,38 @@ const markAsViewed = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.markAsViewed = markAsViewed;
+const countNotifications = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const id_usuario = req.id_usuario;
+        const total = yield UserInfo_1.default.aggregate([
+            {
+                $match: {
+                    "id_addressee": id_usuario
+                }
+            },
+            { $unwind: "$notifications" },
+            {
+                $match: { "notifications.isView": false }
+            },
+            {
+                "$group": {
+                    "_id": "$id",
+                    "total": { "$sum": 1 }
+                }
+            }
+        ]);
+        res.status(200).json({
+            ok: true,
+            msg: 'Query ok',
+            total: total.length > 0 ? total[0].total : 0
+        });
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json({
+            ok: false,
+            msg: 'Error, contacta al Devops'
+        });
+    }
+});
+exports.countNotifications = countNotifications;
