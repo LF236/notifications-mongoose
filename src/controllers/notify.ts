@@ -1,6 +1,9 @@
 import { Response } from 'express';
 import { AddNotifyePostRequestInterface } from '../interface/notifyInterface';
 import UserInfo from '../models/UserInfo';
+import { getEmployeesByPermissionRequest, getNamePacienteRequest } from '../services/sica3Services';
+import { createNotificationQuery } from '../helpers/notificationsQuery';
+import { messageToUpdateNotificationFromSocket } from '../services/socketServices';
 
 export const createNotification = async ( req: any, res: Response ) => {
     try{
@@ -193,6 +196,47 @@ export const countNotifications = async( req: any, res: Response ) => {
             msg: 'Query ok',
             total: total.length > 0 ? total[ 0 ].total : 0
         });
+    }
+    catch( err ) {
+        console.log( err );
+        res.status( 500 ).json({
+            ok: false,
+            msg: 'Error, contacta al Devops'
+        });
+    }
+}
+
+export const createNotificationToChangeInExpediente = async( req: any, res: Response ) => {
+    try {
+        const { id_paciente } = req.body;
+        
+        const patientName = (await getNamePacienteRequest( id_paciente )).nombre_paciente;
+        const employeesByPermission = await getEmployeesByPermissionRequest( 'incidencias_ver' );
+        const idsToUpdatedCountNotify : number[] = [];
+        const arrPromises: any[] = [];
+        employeesByPermission.message.map( employe => {
+            idsToUpdatedCountNotify.push( employe.id_empleado );
+            arrPromises.push(
+                createNotificationQuery({
+                    msg: `Han actualizado los datos del paciente ${ patientName }`,
+                    id_addressee: employe.id_empleado,
+                    is_case_especial_case: 1,
+                    action: 'OPEN_URL',
+                    complement_action: `https://sica.ssaver.gob.mx/hospitalizacion/paciente/${ id_paciente }`,
+                    name_module: 'Global',
+                    msg_to_action: 'Click para abrir',
+                    info_sender: null
+                })
+            )
+        } );
+
+        Promise.all( arrPromises ).then( async(r)  => {
+            res.status( 200 ).json({
+                ok: true
+            });
+            messageToUpdateNotificationFromSocket( idsToUpdatedCountNotify );            
+        } )
+        
     }
     catch( err ) {
         console.log( err );

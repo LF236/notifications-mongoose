@@ -22,6 +22,10 @@ router.post('/add', [
     validar_campos_1.validarCampos,
     add_info_usuario_1.addInfoUsuario
 ], notify_1.createNotification);
+router.post('/add/modificacionExpediente', [
+    (0, express_validator_1.check)('id_paciente', 'Es necesario enviar información del paciente').not().isEmpty(),
+    validar_campos_1.validarCampos
+], notify_1.createNotificationToChangeInExpediente);
 router.get('/getMyNotifications', validar_jwt_1.validarJWT, notify_1.getMyNotifications);
 router.get('/count', validar_jwt_1.validarJWT, notify_1.countNotifications);
 router.put('/markAsViewed', validar_jwt_1.validarJWT, notify_1.markAsViewed);

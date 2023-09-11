@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getNameAndEnrollmentById = void 0;
+exports.getEmployeesByPermissionRequest = exports.getNamePacienteRequest = exports.getNameAndEnrollmentById = void 0;
 const sica3Api_1 = require("../api/sica3Api");
 const getNameAndEnrollmentById = (id) => {
     return new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
@@ -23,3 +23,27 @@ const getNameAndEnrollmentById = (id) => {
     }));
 };
 exports.getNameAndEnrollmentById = getNameAndEnrollmentById;
+const getNamePacienteRequest = (id_paciente) => {
+    return new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            const data = yield sica3Api_1.sica3Api.get(`/api/sactum_falso/paciente/getNombre?id_paciente=${id_paciente}`);
+            resolve(data.data);
+        }
+        catch (err) {
+            reject(null);
+        }
+    }));
+};
+exports.getNamePacienteRequest = getNamePacienteRequest;
+const getEmployeesByPermissionRequest = (permission) => {
+    return new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            const data = yield sica3Api_1.sica3Api.get(`/api/sactum_falso/empleadosByPermiso?permiso=${permission}`);
+            resolve(data.data);
+        }
+        catch (err) {
+            reject(null);
+        }
+    }));
+};
+exports.getEmployeesByPermissionRequest = getEmployeesByPermissionRequest;

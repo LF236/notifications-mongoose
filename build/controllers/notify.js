@@ -12,8 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.countNotifications = exports.markAsViewed = exports.getMyNotifications = exports.createNotification = void 0;
+exports.createNotificationToChangeInExpediente = exports.countNotifications = exports.markAsViewed = exports.getMyNotifications = exports.createNotification = void 0;
 const UserInfo_1 = __importDefault(require("../models/UserInfo"));
+const sica3Services_1 = require("../services/sica3Services");
+const notificationsQuery_1 = require("../helpers/notificationsQuery");
+const socketServices_1 = require("../services/socketServices");
 const createNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { msg, id_addressee, is_case_especial_case, action, complement_action, name_module, id_seender, msg_to_action } = req.body;
@@ -191,3 +194,39 @@ const countNotifications = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.countNotifications = countNotifications;
+const createNotificationToChangeInExpediente = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id_paciente } = req.body;
+        const patientName = (yield (0, sica3Services_1.getNamePacienteRequest)(id_paciente)).nombre_paciente;
+        const employeesByPermission = yield (0, sica3Services_1.getEmployeesByPermissionRequest)('incidencias_ver');
+        const idsToUpdatedCountNotify = [];
+        const arrPromises = [];
+        employeesByPermission.message.map(employe => {
+            idsToUpdatedCountNotify.push(employe.id_empleado);
+            arrPromises.push((0, notificationsQuery_1.createNotificationQuery)({
+                msg: `Han actualizado los datos del paciente ${patientName}`,
+                id_addressee: employe.id_empleado,
+                is_case_especial_case: 1,
+                action: 'OPEN_URL',
+                complement_action: `https://sica.ssaver.gob.mx/hospitalizacion/paciente/${id_paciente}`,
+                name_module: 'Global',
+                msg_to_action: 'Click para abrir',
+                info_sender: null
+            }));
+        });
+        Promise.all(arrPromises).then((r) => __awaiter(void 0, void 0, void 0, function* () {
+            res.status(200).json({
+                ok: true
+            });
+            (0, socketServices_1.messageToUpdateNotificationFromSocket)(idsToUpdatedCountNotify);
+        }));
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json({
+            ok: false,
+            msg: 'Error, contacta al Devops'
+        });
+    }
+});
+exports.createNotificationToChangeInExpediente = createNotificationToChangeInExpediente;
